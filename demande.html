@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VotreSolution • Demande</title>
+  <meta name="description" content="Laissez vos informations. Réponse sous 24h." />
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="brand__text">
+          <div class="brand__name">VotreSolution</div>
+          <div class="brand__tag">Formulaire de demande</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="pill" href="index.html">Accueil</a>
+        <a class="pill pill--primary" href="#form">Envoyer une demande</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card section">
+      <h1 class="h1">Demande de contact</h1>
+      <p class="sub">Complétez le formulaire. Nous vous recontactons sous 24h.</p>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <form id="leadForm" class="form" novalidate>
+        <!-- Honeypot anti-spam -->
+        <div class="sr-only" aria-hidden="true">
+          <label for="website">Votre site</label>
+          <input id="website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div class="two">
+          <div>
+            <label for="prenom">Prénom *</label>
+            <input id="prenom" name="prenom" autocomplete="given-name" required />
+            <div class="error" data-err-for="prenom">Veuillez indiquer votre prénom.</div>
+          </div>
+          <div>
+            <label for="nom">Nom *</label>
+            <input id="nom" name="nom" autocomplete="family-name" required />
+            <div class="error" data-err-for="nom">Veuillez indiquer votre nom.</div>
+          </div>
+        </div>
+
+        <div class="two">
+          <div>
+            <label for="telFixe">Téléphone fixe</label>
+            <input id="telFixe" name="telFixe" inputmode="tel" placeholder="Ex: 01 23 45 67 89" />
+            <div class="help">Optionnel</div>
+          </div>
+          <div>
+            <label for="telPortable">Téléphone portable *</label>
+            <input id="telPortable" name="telPortable" inputmode="tel" placeholder="Ex: 06 12 34 56 78" required />
+            <div class="error" data-err-for="telPortable">Veuillez indiquer un numéro valide.</div>
+          </div>
+        </div>
+
+        <div>
+          <label for="email">Email *</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="vous@exemple.com" required />
+          <div class="error" data-err-for="email">Veuillez indiquer un email valide.</div>
+        </div>
+
+        <div>
+          <label for="objet">Objet de la demande *</label>
+          <select id="objet" name="objet" required>
+            <option value="">Sélectionnez…</option>
+            <option>Demande de devis</option>
+            <option>Audit / diagnostic</option>
+            <option>Partenariat</option>
+            <option>Support / question</option>
+            <option>Autre</option>
+          </select>
+          <div class="error" data-err-for="objet">Veuillez sélectionner un objet.</div>
+        </div>
+        
+        <div>
+          <label for="message">Message (optionnel)</label>
+          <textarea id="message" name="message" rows="4" placeholder="Décrivez brièvement votre besoin…"></textarea>
+          <div class="help">Optionnel — plus de détails = réponse plus rapide.</div>
+        </div>
+
+        <div class="row">
+          <input id="consent" name="consent" type="checkbox" required />
+          <div>
+            <label for="consent" class="labelStrong">
+              J’accepte que mes informations soient utilisées pour être recontacté(e). *
+            </label>
+            <div class="error" data-err-for="consent">Veuillez accepter le consentement.</div>
+          </div>
+        </div>
+
+        <button class="btn btnPrimary btnFull" type="submit">Envoyer ma demande</button>
+        <div class="help">🔒 Pas de spam. Vos données restent confidentielles.</div>
+
+        <div class="turnstileWrap">
+          <div class="cf-turnstile" data-sitekey="0x4AAAAAACfIGfaOXkMXeXvc"></div>
+          <div class="error" data-err-for="turnstile">Veuillez valider le captcha.</div>
+        </div>
+
+      </form>
+    </section>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> VotreSolution</div>
+      <div class="muted"><a href="#">Mentions légales</a> • <a href="#">Politique de confidentialité</a></div>
+    </footer>
+  </main>
+
+  <script src="assets/app.js"></script>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
