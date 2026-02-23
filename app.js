@@ -105,34 +105,55 @@ if (form) {
       return;
     }
 
-    try {
-      console.log("azerty");
-      await fetch(APP_SCRIPT_WEB_APP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+   try {
+  console.log("azerty");
 
-      // Event GTM : succès
-      window.dataLayer.push({
-        event: "lead_form_submit_success",
-        lead_object: data.objet || "",
-        lead_source: data.utm_source || data.source || ""
-      });
+  // Requête "simple" (évite le preflight CORS avec Apps Script)
+  const payload = new URLSearchParams();
+  Object.entries(data).forEach(([key, value]) => {
+    payload.append(key, value ?? "");
+  });
 
-      form.reset();
-      if (window.turnstile) window.turnstile.reset();
+  const response = await fetch(APP_SCRIPT_WEB_APP_URL, {
+    method: "POST",
+    body: payload
+    // ⚠️ pas de headers Content-Type ici
+  });
 
-      // Redirection vers page merci (avec quelques infos utiles)
-      const thanksUrl = new URL("merci.html", window.location.href);
-      if (data.utm_source) thanksUrl.searchParams.set("utm_source", data.utm_source);
-      if (data.utm_campaign) thanksUrl.searchParams.set("utm_campaign", data.utm_campaign);
+  // Apps Script renvoie parfois du texte JSON => on lit en texte d'abord
+  const raw = await response.text();
+  let result = null;
+  try {
+    result = JSON.parse(raw);
+  } catch (_) {
+    result = { success: true, raw };
+  }
 
-      window.location.href = thanksUrl.toString();
+  // Si ton script renvoie explicitement success:false
+  if (result && result.success === false) {
+    throw new Error(result.error || "Erreur Apps Script");
+  }
 
-    } catch (err) {
-      console.log("erreur",err);
-      setStatus("bad", "Une erreur est survenue. Réessayez ou contactez-nous directement.");
-    }
+  // Event GTM : succès
+  window.dataLayer.push({
+    event: "lead_form_submit_success",
+    lead_object: data.objet || "",
+    lead_source: data.utm_source || data.source || ""
+  });
+
+  form.reset();
+  if (window.turnstile) window.turnstile.reset();
+
+  // Redirection vers page merci
+  const thanksUrl = new URL("merci.html", window.location.href);
+  if (data.utm_source) thanksUrl.searchParams.set("utm_source", data.utm_source);
+  if (data.utm_campaign) thanksUrl.searchParams.set("utm_campaign", data.utm_campaign);
+
+  window.location.href = thanksUrl.toString();
+
+} catch (err) {
+  console.log("erreur", err);
+  setStatus("bad", "Une erreur est survenue. Réessayez ou contactez-nous directement.");
+}
   });
 }
