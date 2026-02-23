@@ -109,7 +109,6 @@ if (form) {
       console.log("azerty");
       await fetch(APP_SCRIPT_WEB_APP_URL, {
         method: "POST",
-        mode: "no-cors", // robuste sur GitHub Pages
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
