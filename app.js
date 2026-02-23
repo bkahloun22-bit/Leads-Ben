@@ -51,6 +51,7 @@ if (form) {
     if (honeypot) {
       form.reset();
       setStatus("ok", "Merci ! Votre demande a bien été envoyée.");
+      console.log("honeypot");
       return;
     }
 
@@ -94,11 +95,13 @@ if (form) {
       if (!statusBox || statusBox.style.display === "none") {
         setStatus("bad", "Veuillez corriger les champs en erreur.");
       }
+      console.log("not ok");
       return;
     }
 
     if (!APP_SCRIPT_WEB_APP_URL || APP_SCRIPT_WEB_APP_URL.includes("PASTE_")) {
       setStatus("bad", "Configuration manquante : ajoutez l’URL du Web App Google Apps Script dans assets/app.js.");
+      console.log("app script");
       return;
     }
 
