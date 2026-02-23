@@ -132,7 +132,7 @@ if (form) {
       window.location.href = thanksUrl.toString();
 
     } catch (err) {
-      console.error(err);
+      console.log("erreur",err);
       setStatus("bad", "Une erreur est survenue. Réessayez ou contactez-nous directement.");
     }
   });
