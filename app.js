@@ -1,5 +1,6 @@
-// ✅ Colle ici l’URL de ton Apps Script (Web App) : .../exec
-const APP_SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwthW2_RxPABsfexou0YDzMxAPO-h-sdhDGc7HZ036-DQoqtBjKDh5ZfUb2fgAc-Er4/exec";
+// ✅ URL du Web App Google Apps Script (.../exec)
+const APP_SCRIPT_WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbwthW2_RxPABsfexou0YDzMxAPO-h-sdhDGc7HZ036-DQoqtBjKDh5ZfUb2fgAc-Er4/exec";
 
 const form = document.getElementById("leadForm");
 const statusBox = document.getElementById("status");
@@ -21,6 +22,12 @@ function setStatus(type, msg) {
   statusBox.style.display = "block";
 }
 
+function clearAllErrors() {
+  ["prenom", "nom", "telPortable", "email", "objet", "consent", "turnstile"].forEach((n) =>
+    showError(n, false)
+  );
+}
+
 function getUTMs() {
   const p = new URLSearchParams(window.location.search);
   return {
@@ -34,106 +41,106 @@ function getUTMs() {
   };
 }
 
-if (form) {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+function getTurnstileToken() {
+  return document.querySelector('input[name="cf-turnstile-response"]')?.value || "";
+}
 
-    ["prenom","nom","telPortable","email","objet","consent","turnstile"].forEach(n => showError(n,false));
-    if (statusBox) statusBox.style.display = "none";
+function buildLeadPayload(formEl) {
+  const utm = getUTMs();
 
-    // Event GTM : tentative
-    window.dataLayer.push({
-      event: "lead_form_submit_attempt"
-    });
+  return {
+    nom: formEl.nom?.value?.trim() || "",
+    prenom: formEl.prenom?.value?.trim() || "",
+    telFixe: formEl.telFixe?.value?.trim() || "",
+    telPortable: formEl.telPortable?.value?.trim() || "",
+    email: formEl.email?.value?.trim() || "",
+    objet: formEl.objet?.value || "",
+    message: formEl.message?.value?.trim() || "",
+    consent: formEl.consent?.checked ? "oui" : "non",
+    turnstileToken: getTurnstileToken(),
+    source: "Site statique",
+    pageUrl: window.location.href,
+    ...utm
+  };
+}
 
-    // Honeypot anti-spam
-    const honeypot = (form.website && form.website.value || "").trim();
-    if (honeypot) {
-      form.reset();
-      setStatus("ok", "Merci ! Votre demande a bien été envoyée.");
-      console.log("honeypot");
-      return;
-    }
+function validateLead(data) {
+  let ok = true;
 
-    // Turnstile token
-    const turnstileToken =
-      document.querySelector('input[name="cf-turnstile-response"]')?.value || "";
+  if (!data.prenom) {
+    showError("prenom", true);
+    ok = false;
+  }
+  if (!data.nom) {
+    showError("nom", true);
+    ok = false;
+  }
+  if (!phoneOk(data.telPortable)) {
+    showError("telPortable", true);
+    ok = false;
+  }
+  if (!emailOk(data.email)) {
+    showError("email", true);
+    ok = false;
+  }
+  if (!data.objet) {
+    showError("objet", true);
+    ok = false;
+  }
+  if (data.consent !== "oui") {
+    showError("consent", true);
+    ok = false;
+  }
 
-    const utm = getUTMs();
+  if (!data.turnstileToken) {
+    showError("turnstile", true);
+    setStatus("bad", "Veuillez valider l’anti-robot (captcha) avant d’envoyer le formulaire.");
+    ok = false;
+  }
 
-    const data = {
-      nom: form.nom.value.trim(),
-      prenom: form.prenom.value.trim(),
-      telFixe: form.telFixe.value.trim(),
-      telPortable: form.telPortable.value.trim(),
-      email: form.email.value.trim(),
-      objet: form.objet.value,
-      message: (form.message?.value || "").trim(),
-      consent: form.consent.checked ? "oui" : "non",
-      turnstileToken: turnstileToken,
-      source: "Site statique",
-      pageUrl: window.location.href,
-      ...utm
-    };
+  if (!ok && (!statusBox || statusBox.style.display === "none")) {
+    setStatus("bad", "Veuillez corriger les champs en erreur.");
+  }
 
-    let ok = true;
+  return ok;
+}
 
-    if (!data.prenom) { showError("prenom", true); ok = false; }
-    if (!data.nom) { showError("nom", true); ok = false; }
-    if (!phoneOk(data.telPortable)) { showError("telPortable", true); ok = false; }
-    if (!emailOk(data.email)) { showError("email", true); ok = false; }
-    if (!data.objet) { showError("objet", true); ok = false; }
-    if (data.consent !== "oui") { showError("consent", true); ok = false; }
-
-    if (!data.turnstileToken) {
-      showError("turnstile", true);
-      setStatus("bad", "Veuillez valider l’anti-robot (captcha) avant d’envoyer le formulaire.");
-      ok = false;
-    }
-
-    if (!ok) {
-      if (!statusBox || statusBox.style.display === "none") {
-        setStatus("bad", "Veuillez corriger les champs en erreur.");
-      }
-      console.log("not ok");
-      return;
-    }
-
-    if (!APP_SCRIPT_WEB_APP_URL || APP_SCRIPT_WEB_APP_URL.includes("PASTE_")) {
-      setStatus("bad", "Configuration manquante : ajoutez l’URL du Web App Google Apps Script dans assets/app.js.");
-      console.log("app script");
-      return;
-    }
-
-   try {
-  console.log("azerty");
-
-  // Requête "simple" (évite le preflight CORS avec Apps Script)
+function toUrlEncoded(data) {
   const payload = new URLSearchParams();
   Object.entries(data).forEach(([key, value]) => {
     payload.append(key, value ?? "");
   });
+  return payload;
+}
+
+async function postLead(data) {
+  const payload = toUrlEncoded(data);
 
   const response = await fetch(APP_SCRIPT_WEB_APP_URL, {
     method: "POST",
     body: payload
-    // ⚠️ pas de headers Content-Type ici
+    // ⚠️ pas de headers Content-Type ici (évite le preflight CORS)
   });
 
-  // Apps Script renvoie parfois du texte JSON => on lit en texte d'abord
+  // Avec Apps Script, même en erreur métier, HTTP peut être 200.
   const raw = await response.text();
-  let result = null;
+
+  let result;
   try {
     result = JSON.parse(raw);
   } catch (_) {
-    result = { success: true, raw };
+    result = { ok: true, raw };
   }
 
-  // Si ton script renvoie explicitement success:false
-  if (result && result.success === false) {
+  // Gestion des erreurs renvoyées par le backend
+  if (result && (result.success === false || result.ok === false)) {
     throw new Error(result.error || "Erreur Apps Script");
   }
 
+  return result;
+}
+
+function onLeadSuccess(data) {
   // Event GTM : succès
   window.dataLayer.push({
     event: "lead_form_submit_success",
@@ -150,10 +157,86 @@ if (form) {
   if (data.utm_campaign) thanksUrl.searchParams.set("utm_campaign", data.utm_campaign);
 
   window.location.href = thanksUrl.toString();
-
-} catch (err) {
-  console.log("erreur", err);
-  setStatus("bad", "Une erreur est survenue. Réessayez ou contactez-nous directement.");
 }
+
+if (form) {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    clearAllErrors();
+    if (statusBox) statusBox.style.display = "none";
+
+    // Event GTM : tentative
+    window.dataLayer.push({ event: "lead_form_submit_attempt" });
+
+    // Honeypot anti-spam
+    const honeypot = (form.website && form.website.value || "").trim();
+    if (honeypot) {
+      form.reset();
+      setStatus("ok", "Merci ! Votre demande a bien été envoyée.");
+      console.log("honeypot triggered");
+      return;
+    }
+
+    const data = buildLeadPayload(form);
+
+    // Validations front
+    if (!validateLead(data)) {
+      console.log("validation failed");
+      return;
+    }
+
+    // Config
+    if (!APP_SCRIPT_WEB_APP_URL || APP_SCRIPT_WEB_APP_URL.includes("PASTE_")) {
+      setStatus(
+        "bad",
+        "Configuration manquante : ajoutez l’URL du Web App Google Apps Script dans assets/app.js."
+      );
+      console.log("missing app script URL");
+      return;
+    }
+
+    // UI feedback pendant l’envoi (optionnel mais utile)
+    const submitBtn = form.querySelector('[type="submit"]');
+    const previousBtnText = submitBtn ? submitBtn.textContent : "";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Envoi en cours...";
+    }
+
+    try {
+      console.log("sending lead...", data);
+
+      const result = await postLead(data);
+      console.log("Apps Script response:", result);
+
+      // Cas "ignored" (ex: consent côté serveur)
+      if (result && result.ignored) {
+        throw new Error("Demande ignorée par le serveur.");
+      }
+
+      onLeadSuccess(data);
+
+    } catch (err) {
+      console.error("erreur", err);
+
+      // Message plus utile selon l’erreur
+      const msg = String(err && err.message ? err.message : err);
+
+      if (/Turnstile/i.test(msg)) {
+        setStatus("bad", "Validation anti-robot échouée. Merci de réessayer.");
+      } else if (/Champs obligatoires/i.test(msg)) {
+        setStatus("bad", "Certains champs obligatoires sont manquants.");
+      } else if (/Failed to fetch/i.test(msg)) {
+        setStatus("bad", "Impossible de contacter le serveur. Vérifiez le déploiement Apps Script puis réessayez.");
+      } else {
+        setStatus("bad", "Une erreur est survenue. Réessayez ou contactez-nous directement.");
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = previousBtnText || "Envoyer";
+      }
+    }
   });
 }
