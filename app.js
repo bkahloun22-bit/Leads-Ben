@@ -124,12 +124,14 @@ async function postLead(data) {
 
   // Avec Apps Script, même en erreur métier, HTTP peut être 200.
   const raw = await response.text();
+  console.log("HTTP status:", response.status, "raw:", raw);
 
   let result;
   try {
     result = JSON.parse(raw);
   } catch (_) {
-    result = { ok: true, raw };
+    // Si Apps Script renvoie une page HTML d'erreur
+    throw new Error(raw.slice(0, 300));
   }
 
   // Gestion des erreurs renvoyées par le backend
